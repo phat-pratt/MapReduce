@@ -1,6 +1,6 @@
 //
 //  mapreduce.c
-//  
+//
 //
 //  Created by James Pratt on 11/19/19.
 //
@@ -10,11 +10,13 @@
 
 // Takes different key/value pairs from many different mappers and
 // stores them in a partition such that the reducers can later access them.
-void MR_Emit(char *key, char *value) {
-    return
+void MR_Emit(char *key, char *value)
+{
+    return;
 }
 
-unsigned long MR_DefaultHashPartition(char *key, int num_partitions) {
+unsigned long MR_DefaultHashPartition(char *key, int num_partitions)
+{
     unsigned long hash = 5381;
     int c;
     while ((c = *key++) != '\0')
@@ -22,7 +24,8 @@ unsigned long MR_DefaultHashPartition(char *key, int num_partitions) {
     return hash % num_partitions;
 }
 
-unsigned long MR_SortedPartition(char *key, int num_partitions) {
+unsigned long MR_SortedPartition(char *key, int num_partitions)
+{
     unsigned long hash = 5381;
     return hash;
 }
@@ -38,6 +41,7 @@ unsigned long MR_SortedPartition(char *key, int num_partitions) {
 //      int num_partition -> number of partitions
 
 void MR_Run(int argc, char *argv[], Mapper map, int num_mappers, Reducer reduce,
-            int num_reducers, Partitioner partition, int num_partitions) {
+            int num_reducers, Partitioner partition, int num_partitions)
+{
     return;
 }
