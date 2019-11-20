@@ -6,6 +6,7 @@
 //
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <pthread.h>
 #include "mapreduce.h"
 
@@ -46,12 +47,16 @@ unsigned long MR_SortedPartition(char *key, int num_partitions)
 void MR_Run(int argc, char *argv[], Mapper map, int num_mappers, Reducer reduce,
             int num_reducers, Partitioner partition, int num_partitions)
 {
+    //create num_mapper threads
+    pthread_t mappers[num_mappers];
+    pthread_t reducers[num_reducers];
     //start num_mapper mapper threads.
 
     // start mapper threads for each filename.
     // mappers take filename as args
     for (int i = 0; i < argc; i++)
     {
+        pthread_create(mappers[i], NULL, map, argv[i]);
     }
 
     //start num_reducer reducer threads
