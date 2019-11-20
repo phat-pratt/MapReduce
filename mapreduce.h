@@ -17,30 +17,39 @@ struct node
     int value;
     struct node *next;
 };
-struct node *nodesArr;
 
-void addNode(struct node *q, char *key, int value)
+struct node **part_array;
+
+/**
+ * How to add to a linked list:
+ *   struct node *temp = part_array[0];
+ *   addNode(&temp, "key", 1);
+ *   part_array[0] = temp;
+ * 
+ **/
+void addNode(struct node **q, char *key, int value)
 {
-    if (q == NULL)
+    if (*q == NULL)
     {
-        printf("null");
-        q = malloc(sizeof(struct node));
+        *q = malloc(sizeof(struct node));
     }
     else
     {
-        printf("node null");
-        while (q->next != NULL)
-            q = q->next;
+        while ((*q)->next != NULL)
+            *q = (*q)->next;
 
-        q->next = malloc(sizeof(struct node));
-        q = q->next;
+        (*q)->next = malloc(sizeof(struct node));
+        *q = (*q)->next;
     }
 
-    q->key = key;
-    q->value = value;
+    (*q)->key = key;
+    (*q)->value = value;
 
-    q->next = NULL;
+    (*q)->next = NULL;
+    //printf("q->key: %s\n", (*q)->key);
 }
+
+
 // External functions: these are what *you must implement*
 
 // Takes different key/value pairs from many different mappers and
@@ -56,10 +65,20 @@ unsigned long MR_DefaultHashPartition(char *key, int num_partitions)
 }
 void MR_Emit(char *key, char *value)
 {
-    printf("key: %s\n", key);
-    printf("value: %s\n", value);
-    unsigned long l = MR_DefaultHashPartition(key, partitions);
-    printf("Partition: %ld\n\n", l);
+    // printf("key: %s\n", key);
+    // printf("value: %s\n", value);
+    int p = MR_DefaultHashPartition(key, partitions);
+    //printf("Partition: %d\n\n", p);
+
+    if(p > partitions) {
+        printf("Something went wrong: partition returned > num_partitions!");
+    }
+    //add node to partition p:
+    struct node *temp = part_array[p];
+
+    addNode(&temp, key, atoi(value));
+    part_array[p] = temp;
+
     return;
 }
 
@@ -82,15 +101,12 @@ void MR_Run(int argc, char *argv[], Mapper map, int num_mappers, Reducer reduce,
             int num_reducers, Partitioner partition, int num_partitions)
 {
     partitions = num_partitions;
-    printf("here");
 
-    nodesArr = malloc(sizeof(struct node) * partitions);
-    for (int i = 0; i < partitions; i++)
-    {
-        struct node *temp = NULL;
-    }
-    addNode(NULL, "key", 1);
-    //printf("nodes[0]: %d", nodesArr[0].value);
+    part_array = (struct node **)malloc(sizeof(struct node *) * partitions);
+
+    
+    //test printing node 
+    // printf("node key: %s\n", part_array[0]->key);
     //create num_mapper threads
     pthread_t mappers[num_mappers];
     //pthread_t reducers[num_reducers];
@@ -98,7 +114,15 @@ void MR_Run(int argc, char *argv[], Mapper map, int num_mappers, Reducer reduce,
     pthread_create(&mappers[0], NULL, (void *)map, argv[1]);
     pthread_join(mappers[0], NULL);
 
-    //start num_reducer reducer threads
+    //create reduce thread. 
+    // pthread_t reducers[num_reducers];
+    // void *rArgs[3];
+    // rArgs[0] = (void*)"";
+    // rArgs[1] = NULL;
+    // rArgs[2] = &partitions;
+    // //start num_reducer reducer threads
+    // pthread_create(&reducers[0], NULL, (void*)reduce, rArgs);
+    // pthread_join(reducers[0],NULL);
     return;
 }
 
