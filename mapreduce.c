@@ -6,6 +6,7 @@
 //
 
 #include <stdio.h>
+#include <pthread.h>
 #include "mapreduce.h"
 
 // Takes different key/value pairs from many different mappers and
@@ -39,9 +40,21 @@ unsigned long MR_SortedPartition(char *key, int num_partitions)
 //
 //      Partitioner partition -> pointer to a Partition function
 //      int num_partition -> number of partitions
-
+//
+//      argv[1] … argv[n-1] (with argc equal to n) all contain file names that
+//      will be passed to the mappers.
 void MR_Run(int argc, char *argv[], Mapper map, int num_mappers, Reducer reduce,
             int num_reducers, Partitioner partition, int num_partitions)
 {
+    //start num_mapper mapper threads.
+
+    // start mapper threads for each filename.
+    // mappers take filename as args
+    for (int i = 0; i < argc; i++)
+    {
+    }
+
+    //start num_reducer reducer threads
+
     return;
 }

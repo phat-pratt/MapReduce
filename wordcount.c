@@ -12,7 +12,10 @@ void Map(char *file_name) {
     size_t size = 0;
     while (getline(&line, &size, fp) != -1) {
         char *token, *dummy = line;
+        // chops line into tokens. Each token is emitted.
         while ((token = strsep(&dummy, " \t\n\r")) != NULL) {
+            // here the key is the word itself and the token is
+            //just a count. In this case 1
             MR_Emit(token, "1");
         }
     }
