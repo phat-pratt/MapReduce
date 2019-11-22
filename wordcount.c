@@ -29,15 +29,13 @@ void Map(char *file_name)
 
 void Reduce(char *key, Getter get_next, int partition_number)
 {
-    printf("here");
     int count = 0;
-    char *value = get_next("hey", 0);
-    printf("%s\n", value);
-    // while ((value = get_next(key, partition_number)) != NULL) {
-    //     printf("%s\n", value);
-    //     break;
-    //     count++;
-    // }
+    char *value;
+    while ((value = get_next(key, partition_number)) != NULL) {
+        printf("%s\n", value);
+        break;
+        count++;
+    }
     printf("%s %d\n", key, count);
 }
 

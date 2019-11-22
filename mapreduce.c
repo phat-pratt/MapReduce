@@ -12,7 +12,6 @@
 
 
 char *getNext(char *key, int partition_number){
-    printf("hello");
     return key;
 }
 int partitions = 0;
@@ -55,11 +54,9 @@ void addNode(struct node **q, char *key, int value)
         (*q)->next = malloc(sizeof(struct node));
         *q = (*q)->next;
     }
-    printf("%s\n",key);
     (*q)->key = key;
     (*q)->value = value;
     (*q)->next = NULL;
-    //printf("q->key: %s\n", (*q)->key);
 }
 
 
@@ -90,7 +87,6 @@ void MR_Emit(char *key, char *value)
     struct node *temp = part_array[p];
 
     addNode(&temp, key, atoi(value));
-    printf("-%s\n", temp->key);
     part_array[p] = temp;
 
     return;
@@ -106,7 +102,7 @@ void reducerHelper(void * arg) {
     
     //for loop that iterates through all the keys that are ass. with this partition.
     //args->reduce(args)
-    printf("%d\n", args->numr);
+    //printf("%d\n", args->numr);
     // for each partition p (args->nump)
         // for each key in that partition p
             // args-reduce(key, getter, p)
@@ -114,8 +110,9 @@ void reducerHelper(void * arg) {
         struct node *temp = part_array[args->nump[i]];
 
         while(temp != NULL) {
+            printf("partition number: %d\n", args->nump[i]);
             args->reduce(temp->key, args->get, args->nump[i]);
-            printf("%s\n",temp->key);
+            //printf("%s\n",temp->key);
             temp = temp->next;
         }
     }
@@ -142,13 +139,20 @@ void MR_Run(int argc, char *argv[], Mapper map, int num_mappers, Reducer reduce,
     // printf("node key: %s\n", part_array[0]->key);
     //create num_mapper threads
     pthread_t mappers[num_mappers];
-    //pthread_t reducers[num_reducers];
+    
     //start num_mapper mapper threads.
-    pthread_create(&mappers[0], NULL, (void *)map, argv[1]);
-    pthread_join(mappers[0], NULL);
-   
+    for(int i = 0;  i < num_mappers; i++) {
+        pthread_create(&mappers[i], NULL, (void *)map, argv[1]);
+    }
+    for(int i = 0;  i < num_mappers; i++) {
+        pthread_join(mappers[i], NULL);
+    }
+    for(int i = 0; i<num_partitions; i++){
+        printf("%d%s\n", i, part_array[i]->key);
+    }
     //create reduce thread. 
     pthread_t reducers[num_reducers];
+
     //void Reduce(char *key, Getter get_next, int partition_number)
 
     struct reducerArgs args[num_reducers];
