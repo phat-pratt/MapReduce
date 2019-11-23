@@ -10,10 +10,6 @@
 // //typedef void (*Reducer)(Getter get_func);
 // typedef unsigned long (*Partitioner)(char *key, int num_partitions);
 
-
-char *getNext(char *key, int partition_number){
-    return key;
-}
 int partitions = 0;
 struct node
 {
@@ -31,34 +27,44 @@ struct reducerArgs
 };
 
 struct node **part_array;
+int *ends;
+int *front;
+char ***parray;
+pthread_mutex_t lock; 
 
-
-/**
- * How to add to a linked list:
- *   struct node *temp = part_array[0];
- *   addNode(&temp, "key", 1);
- *   part_array[0] = temp;
- * 
- **/
-void addNode(struct node **q, char *key, int value)
-{
-    if (*q == NULL)
-    {
-        *q = malloc(sizeof(struct node));
+char *getNext(char *key, int partition_number){
+    for(int i = front[partition_number]; i < ends[i]; i++){
+        
+        if(!strcmp(parray[partition_number][i], key)) {
+            front[partition_number] = i+1;
+            return key;
+        }
     }
-    else
-    {
-        while ((*q)->next != NULL)
-            *q = (*q)->next;
 
-        (*q)->next = malloc(sizeof(struct node));
-        *q = (*q)->next;
-    }
-    (*q)->key = key;
-    (*q)->value = value;
-    (*q)->next = NULL;
+    return NULL;
 }
 
+void append(int p, char *key, int value) 
+{ 
+    struct node* new_node = (struct node*) malloc(sizeof(struct node)); 
+    struct node *last = part_array[p];  
+   
+    new_node->key  = key;
+    new_node->value  = value;
+
+    new_node->next = NULL; 
+    if (part_array[p] == NULL) 
+    { 
+       part_array[p] = new_node; 
+       return; 
+    }   
+       
+    while (last->next != NULL){ 
+        last = last->next; 
+    }
+    last->next = new_node; 
+    return;     
+} 
 
 // External functions: these are what *you must implement*
 
@@ -75,19 +81,23 @@ unsigned long MR_DefaultHashPartition(char *key, int num_partitions)
 }
 void MR_Emit(char *key, char *value)
 {
-    // printf("key: %s\n", key);
-    // printf("value: %s\n", value);
     int p = MR_DefaultHashPartition(key, partitions);
-    //printf("Partition: %d\n\n", p);
 
     if(p > partitions) {
         printf("Something went wrong: partition returned > num_partitions!");
     }
     //add node to partition p:
-    struct node *temp = part_array[p];
+    pthread_mutex_lock(&lock); 
+    append(p, key, atoi(value));
+    parray[p][ends[p]++] = key;
+    parray[p] = realloc(parray[p], (ends[p]+1)*sizeof(char*));
+    //add to end of array
+    // for(int i = 0; i< partitions; i++){
+    //     parray[i] = malloc(sizeof(char * ));
+    //     ends[i] = 0;
+    // }
 
-    addNode(&temp, key, atoi(value));
-    part_array[p] = temp;
+    pthread_mutex_unlock(&lock); 
 
     return;
 }
@@ -107,14 +117,18 @@ void reducerHelper(void * arg) {
         // for each key in that partition p
             // args-reduce(key, getter, p)
     for(int i = 0; i < args->numr; i++){
-        struct node *temp = part_array[args->nump[i]];
-
-        while(temp != NULL) {
-            printf("partition number: %d\n", args->nump[i]);
-            args->reduce(temp->key, args->get, args->nump[i]);
-            //printf("%s\n",temp->key);
-            temp = temp->next;
+        printf("****************%d\n", args->nump[i]);
+        for(int j = 0; j < ends[args->nump[i]]; j++){
+            if(j<front[args->nump[i]]){
+                continue;
+            }
+            args->reduce(parray[args->nump[i]][j], args->get, args->nump[i]);
         }
+        // struct node *temp = part_array[args->nump[i]];
+        // while(temp != NULL) {
+        //     args->reduce(temp->key, args->get, args->nump[i]);
+        //     temp = temp->next;
+        // }
     }
 }
 // Arguments:
@@ -127,29 +141,69 @@ void reducerHelper(void * arg) {
 //      Partitioner partition -> pointer to a Partition function
 //      int num_partition -> number of partitions
 
+int compare (const void * a, const void * b ) {
+    const char *pa = *(const char**)a;
+    const char *pb = *(const char**)b;
+
+    return strcmp(pa,pb);
+}
 void MR_Run(int argc, char *argv[], Mapper map, int num_mappers, Reducer reduce,
             int num_reducers, Partitioner partition, int num_partitions)
 {
     partitions = num_partitions;
-
     part_array = (struct node **)malloc(sizeof(struct node *) * partitions);
 
-    
-    //test printing node 
+    parray = malloc(partitions*sizeof(char **));
+
+    ends = (int*)malloc(sizeof(int) * partitions);
+    front = (int*)malloc(sizeof(int) * partitions);
+
+    for(int i = 0; i< partitions; i++){
+        parray[i] = malloc(sizeof(char * ));
+        ends[i] = 0;
+        front[i] = 0;
+    }
+
+    // printf("%s", parray[0][9]);  
+      //test printing node 
     // printf("node key: %s\n", part_array[0]->key);
     //create num_mapper threads
     pthread_t mappers[num_mappers];
     
+    if (pthread_mutex_init(&lock, NULL) != 0) { 
+        printf("\n mutex init has failed\n"); 
+        return; 
+    } 
+
     //start num_mapper mapper threads.
     for(int i = 0;  i < num_mappers; i++) {
-        pthread_create(&mappers[i], NULL, (void *)map, argv[1]);
+        pthread_create(&mappers[i], NULL, (void *)map, argv[i+1]);
     }
     for(int i = 0;  i < num_mappers; i++) {
         pthread_join(mappers[i], NULL);
     }
-    for(int i = 0; i<num_partitions; i++){
-        printf("%d%s\n", i, part_array[i]->key);
+    pthread_mutex_destroy(&lock); 
+
+    for(int i = 0; i < num_partitions; i++){
+        struct node *temp = part_array[i];
+        printf("\t%d) ", i);
+        while(temp != NULL) {
+            printf("%s ",temp->key);
+            temp = temp->next;
+        }
+        printf("\n");
     }
+    for(int i = 0; i < num_partitions; i++) {
+        qsort(parray[i], ends[i], sizeof(char*), compare);
+    }
+    for(int i = 0; i < num_partitions; i++) {
+        printf("%d) ", i);
+        for(int j = 0; j < ends[i]; j ++){
+            printf("%s ",parray[i][j]);
+        }
+        printf("\n");
+    }
+
     //create reduce thread. 
     pthread_t reducers[num_reducers];
 
@@ -171,7 +225,15 @@ void MR_Run(int argc, char *argv[], Mapper map, int num_mappers, Reducer reduce,
         // add i to args[i % num_reducers].nump  
 
     for(int i = 0; i < num_partitions; i++){
+        printf("reducer: %d  -> %d\n",i%num_reducers, i);
         args[i%num_reducers].nump[args[i%num_reducers].numr++] = i;
+    }
+    for(int i = 0; i < num_reducers; i++){
+        printf("%d) ", i+1);
+        for(int j = 0; j < args[i].numr;j++){
+            printf("%d ", args[i].nump[j]);
+        }
+        printf("\n");
     }
     // args->nump = 0;
     for(int i = 0; i < num_reducers; i++) {

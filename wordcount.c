@@ -27,19 +27,15 @@ void Map(char *file_name)
     fclose(fp);
 }
 
-void Reduce(char *key, Getter get_next, int partition_number)
-{
+void Reduce(char *key, Getter get_next, int partition_number) {
     int count = 0;
     char *value;
-    while ((value = get_next(key, partition_number)) != NULL) {
-        printf("%s\n", value);
-        break;
+    while ((value = get_next(key, partition_number)) != NULL)
         count++;
-    }
     printf("%s %d\n", key, count);
 }
 
 int main(int argc, char *argv[])
 {
-    MR_Run(argc, argv, Map, 10, Reduce, 10, MR_DefaultHashPartition, 10);
+    MR_Run(argc, argv, Map, 2, Reduce, 2, MR_DefaultHashPartition, 10);
 }
